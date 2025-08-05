@@ -1,0 +1,32 @@
+services:
+  linecook-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: linecook-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Load environment variables from .env file
+      - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
+      - MODEL_ID=${MODEL_ID:-shipping-label-k3hzg/4}
+      - CONFIDENCE_THRESH=${CONFIDENCE_THRESH:-0.04}
+    env_file:
+      - .env
+    volumes:
+      # Optional: Mount local directories for input/output
+      - ./test_inputs:/app/test_inputs:ro
+      - ./test_outputs:/app/test_outputs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "uv", "run", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - linecook-network
+
+networks:
+  linecook-network:
+    driver: bridge
