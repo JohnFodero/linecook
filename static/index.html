@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LineCook - Shipping Label Detection</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>LineCook</h1>
+            <p>Shipping Label Detection & Processing</p>
+        </header>
+
+        <main class="main">
+            <!-- File Upload Section -->
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📁</div>
+                        <h3>Upload Image or PDF</h3>
+                        <p>Drop files here or click to browse</p>
+                        <p class="file-types">Supported: JPG, JPEG, PNG, PDF</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                </div>
+                
+                <!-- Selected File Info -->
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-details">
+                        <span class="file-name" id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                    </div>
+                    <button class="remove-file" id="removeFile">✕</button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" id="actionButtons" style="display: none;">
+                <button class="btn btn-primary" id="convertBtn">
+                    <span class="btn-text">Convert</span>
+                    <span class="spinner" style="display: none;">⏳</span>
+                </button>
+                <button class="btn btn-secondary" id="printBtn">
+                    <span class="btn-text">Print</span>
+                    <span class="spinner" style="display: none;">⏳</span>
+                </button>
+            </div>
+
+            <!-- Message Area -->
+            <div class="message-area" id="messageArea" style="display: none;">
+                <div class="message" id="message"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3>Processed Label</h3>
+                    <div class="label-info">
+                        <span id="labelDimensions"></span>
+                        <span id="labelConfidence"></span>
+                    </div>
+                </div>
+                
+                <div class="image-preview">
+                    <img id="processedImage" alt="Processed shipping label" />
+                </div>
+                
+                <div class="download-section">
+                    <button class="btn btn-download" id="downloadBtn">
+                        📥 Download Label
+                    </button>
+                </div>
+
+                <!-- Print Status (shown when printing) -->
+                <div class="print-status" id="printStatus" style="display: none;">
+                    <div class="print-message" id="printMessage"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>© 2024 LineCook - Powered by Computer Vision</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
