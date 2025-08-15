@@ -7,9 +7,6 @@ services:
     container_name: linecook-api
     ports:
       - "8000:8000"
-    # Uncomment the following when using Traefik (and comment out the ports above)
-    # expose:
-    #   - "8000"
     environment:
       # Load environment variables from .env file
       - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
@@ -18,51 +15,13 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-    volumes:
-      - /var/run/cups/cups.sock:/var/run/cups/cups.sock
+    # uncomment when running on a linux host 
+    # volumes:
+    #   - /var/run/cups/cups.sock:/var/run/cups/cups.sock
+    #   - /env/cups:/env/cups:ro
     healthcheck:
       test: ["CMD", "uv", "run", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Uncomment when using Traefik
-    # networks:
-      # - traefik
-    
-    # =========================================
-    # TRAEFIK LABELS FOR LINECOOK-API
-    # =========================================
-    # Uncomment the following labels to enable Traefik routing
-    # labels:
-    #   # Enable Traefik
-    #   - "traefik.enable=true"
-    #   
-    #   # HTTP Router (automatically redirects to HTTPS)
-    #   - "traefik.http.routers.linecook.rule=Host(`linecook.${DOMAIN:-localhost}`)"
-    #   - "traefik.http.routers.linecook.entrypoints=web"
-    #   
-    #   # HTTPS Router
-    #   - "traefik.http.routers.linecook-secure.rule=Host(`linecook.${DOMAIN:-localhost}`)"
-    #   - "traefik.http.routers.linecook-secure.entrypoints=websecure"
-    #   - "traefik.http.routers.linecook-secure.tls.certresolver=letsencrypt"
-    #   - "traefik.http.routers.linecook-secure.middlewares=secure-headers"
-    #   
-    #   # Service Configuration
-    #   - "traefik.http.services.linecook.loadbalancer.server.port=8000"
-    #   - "traefik.http.services.linecook.loadbalancer.healthcheck.path=/health"
-    #   - "traefik.http.services.linecook.loadbalancer.healthcheck.interval=30s"
-    #   
-    #   # Security Headers Middleware
-    #   - "traefik.http.middlewares.secure-headers.headers.sslredirect=true"
-    #   - "traefik.http.middlewares.secure-headers.headers.forcestsheader=true"
-    #   - "traefik.http.middlewares.secure-headers.headers.stsincludesubdomains=true"
-    #   - "traefik.http.middlewares.secure-headers.headers.stspreload=true"
-    #   - "traefik.http.middlewares.secure-headers.headers.stsseconds=31536000"
-    #   - "traefik.http.middlewares.secure-headers.headers.contenttypenosniff=true"
-    #   - "traefik.http.middlewares.secure-headers.headers.browserxssfilter=true"
-
-# networks:
-  # Uncomment when using Traefik
-  # traefik:
-  #   external: true

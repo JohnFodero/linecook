@@ -29,13 +29,19 @@ This is designed to solve a super narrow problem - when using a label printer yo
    ```
 
   __Note__: see `.env.example` for more configuration options
+
+4. **Docker setup**:
+    Getting CUPS working in docker can be a bit finicky. The commented lines in `docker-compose.yml` work well for me on an Ubuntu host (with CUPS setup). In general, mounting cups.sock seems to be the suggested approach here. Feel free to share alternatives if they work for you. ie. I have not had any luck (nor have I tried much yet) running this on a MacOS host.. 
 ## API Usage
 
 ### Starting the Server
 
 ```bash
-# Using Justfile (recommended)
+# Local (recommended)
 just serve
+# Docker
+just docker-serve   
+just docker-stop
 ```
 
 The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
