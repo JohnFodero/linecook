@@ -22,11 +22,14 @@ RUN uv sync --frozen --no-dev && \
     apt-get autoremove -y && \
     apt-get clean
 
-# Copy application code
-COPY main.py ./
+# Copy application code and modules
+COPY main.py config.py ./
+COPY api/ ./api/
+COPY services/ ./services/
+COPY static/ ./static/
 
-# Create directories for input/output (optional, can be mounted)
-RUN mkdir -p test_inputs test_outputs
+# Create directories for input/output and temp files (optional, can be mounted)
+RUN mkdir -p test_inputs test_outputs tmp
 
 # Expose port 8000
 EXPOSE 8000

@@ -1,5 +1,6 @@
 services:
   linecook-api:
+#    image: ghcr.io/johnfodero/linecook:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -59,7 +60,7 @@ services:
     #   - "traefik.http.middlewares.secure-headers.headers.contenttypenosniff=true"
     #   - "traefik.http.middlewares.secure-headers.headers.browserxssfilter=true"
 
-networks:
+# networks:
   # Uncomment when using Traefik
   # traefik:
   #   external: true
