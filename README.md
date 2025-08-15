@@ -1,6 +1,6 @@
 # LineCook - Shipping Label Detection API
 
-This is designed to solve a super narrow problem - when using a label printer, but when you have to download, crop, save and print. This makes the benefits of having a label printer setup marginal at best. This automates the label detection, crop, rotation, and printing all into one API. 
+This is designed to solve a super narrow problem - when using a label printer you have to download, crop, save all before printing. This makes the benefits of having a label printer setup marginal at best. This tool automates the label detection, crop, rotation, and printing all into one API. 
 
 ## Installation & Setup
 
