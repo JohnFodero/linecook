@@ -24,7 +24,6 @@ RUN uv sync --frozen --no-dev && \
 
 # Copy application code
 COPY main.py ./
-COPY test_api.py ./
 
 # Create directories for input/output (optional, can be mounted)
 RUN mkdir -p test_inputs test_outputs
