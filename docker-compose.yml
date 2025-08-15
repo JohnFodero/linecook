@@ -18,6 +18,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    volumes:
+      - /var/run/cups/cups.sock:/var/run/cups/cups.sock
     healthcheck:
       test: ["CMD", "uv", "run", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s

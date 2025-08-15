@@ -13,3 +13,5 @@ wheels/
 test_inputs/
 test_outputs/
 tmp/
+
+.DS_Store

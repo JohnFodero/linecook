@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    cups-client \
+    cups-bsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
