@@ -215,8 +215,7 @@ class ImageProcessor:
         """
         Process an uploaded file and extract the best shipping label.
         
-        This method handles both PDF and image files, validates content,
-        runs inference, and returns the cropped label.
+        This is a simplified version that delegates to smaller, focused methods.
         
         Args:
             file_content: Raw file bytes
@@ -225,24 +224,14 @@ class ImageProcessor:
         Returns:
             Tuple of (cropped_image, temp_file_path, best_prediction)
             Returns (None, error_message, None) if processing fails
-            
-        Raises:
-            ImageProcessingError: If file processing fails
         """
-        from services.inference import inference_service
-        
         try:
-            # Validate file content first
             self.validate_file_content(file_content, filename)
             
-            # Create temporary file for processing
             with self.temporary_file(suffix=Path(filename).suffix) as temp_input_path:
-                # Write content to temporary file
-                with open(temp_input_path, 'wb') as f:
-                    f.write(file_content)
+                self._write_temp_file(temp_input_path, file_content)
                 
-                # Process based on file type
-                if filename.lower().endswith(".pdf"):
+                if self._is_pdf_file(filename):
                     return self._process_pdf_file(temp_input_path, filename)
                 else:
                     return self._process_image_file(temp_input_path, filename)
@@ -252,6 +241,15 @@ class ImageProcessor:
         except Exception as e:
             logger.error(f"Error processing uploaded file {filename}: {str(e)}")
             raise ImageProcessingError(f"File processing failed: {str(e)}")
+    
+    def _write_temp_file(self, temp_path: str, content: bytes) -> None:
+        """Write content to temporary file."""
+        with open(temp_path, 'wb') as f:
+            f.write(content)
+    
+    def _is_pdf_file(self, filename: str) -> bool:
+        """Check if filename is a PDF file."""
+        return filename.lower().endswith(".pdf")
     
     def _process_pdf_file(
         self, 
@@ -265,22 +263,10 @@ class ImageProcessor:
             pages = self.convert_pdf_to_images(pdf_path)
             
             for i, page in enumerate(pages):
-                try:
-                    # Run inference on this page
-                    predictions, best_pred = inference_service.detect_labels(page)
+                label_result = self._try_extract_label_from_image(page, f"page {i} of {filename}")
+                if label_result[0] is not None:  # Found a label
+                    return label_result
                     
-                    # Create temporary output file (not auto-deleted for return)
-                    with self.temporary_file(".png", delete=False) as temp_output_path:
-                        cropped = self.crop_and_save_prediction(page, best_pred, temp_output_path)
-                        
-                        logger.info(f"Successfully processed page {i} of PDF: {filename}")
-                        return cropped, temp_output_path, best_pred
-                        
-                except ValueError as e:
-                    # No labels detected on this page, try next page
-                    logger.debug(f"No labels detected on page {i} of {filename}: {str(e)}")
-                    continue
-            
             # No labels found in any page
             return None, "No shipping labels detected in PDF", None
             
@@ -294,12 +280,28 @@ class ImageProcessor:
         filename: str
     ) -> tuple[Optional[Image.Image], str, Optional[Dict[str, Any]]]:
         """Process an image file and extract labels."""
-        from services.inference import inference_service
-        
         try:
             # Load and convert image to RGB
             image = Image.open(image_path).convert("RGB")
-            
+            return self._try_extract_label_from_image(image, filename)
+                
+        except Exception as e:
+            logger.error(f"Error processing image file: {str(e)}")
+            raise ImageProcessingError(f"Image processing failed: {str(e)}")
+    
+    def _try_extract_label_from_image(
+        self, 
+        image: Image.Image, 
+        image_description: str
+    ) -> tuple[Optional[Image.Image], str, Optional[Dict[str, Any]]]:
+        """
+        Try to extract a label from a single image.
+        
+        This method handles the common logic for both PDF pages and standalone images.
+        """
+        from services.inference import inference_service
+        
+        try:
             # Run inference
             predictions, best_pred = inference_service.detect_labels(image)
             
@@ -307,15 +309,13 @@ class ImageProcessor:
             with self.temporary_file(".png", delete=False) as temp_output_path:
                 cropped = self.crop_and_save_prediction(image, best_pred, temp_output_path)
                 
-                logger.info(f"Successfully processed image: {filename}")
+                logger.info(f"Successfully processed {image_description}")
                 return cropped, temp_output_path, best_pred
                 
         except ValueError as e:
             # No labels detected
-            return None, f"No shipping labels detected in image: {str(e)}", None
-        except Exception as e:
-            logger.error(f"Error processing image file: {str(e)}")
-            raise ImageProcessingError(f"Image processing failed: {str(e)}")
+            logger.debug(f"No labels detected in {image_description}: {str(e)}")
+            return None, f"No shipping labels detected in {image_description}: {str(e)}", None
 
 
 # Global image processor instance

@@ -9,7 +9,7 @@ import base64
 import logging
 import os
 from io import BytesIO
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -70,103 +70,143 @@ async def create_labels(
         print_label: Optional flag to print the label if successful
     
     Returns:
-        JSON response with:
-        - success: boolean indicating if label was found
-        - message: descriptive message
-        - label_dimensions: width/height of cropped label
-        - image_data: base64 encoded PNG of cropped label
-        - confidence: detection confidence score
-        - print_attempted: boolean if printing was requested
-        - print_success: boolean if printing succeeded
-        - print_message: printing status message
+        JSON response with label processing results
     
     Raises:
         HTTPException: For validation errors (400) or processing errors (500)
     """
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-    
     try:
-        # Read file content
+        _validate_upload_file(file)
         file_content = await file.read()
+        
         logger.info(f"Processing uploaded file: {file.filename} ({len(file_content)} bytes)")
         
-        # Process the file using the image processing service
-        try:
-            cropped_image, result_path, best_pred = image_processor.process_uploaded_file(
-                file_content, file.filename
-            )
-        except ImageProcessingError as e:
-            logger.warning(f"Image processing failed for {file.filename}: {str(e)}")
-            raise HTTPException(status_code=400, detail=str(e))
+        # Process the file to extract label
+        processing_result = _process_label_file(file_content, file.filename)
         
-        # Check if label was found
-        if cropped_image is None:
-            logger.info(f"No labels detected in {file.filename}")
-            return JSONResponse(
-                status_code=404,
-                content={"success": False, "message": result_path}
-            )
+        if not processing_result["success"]:
+            return _create_error_response(processing_result["message"])
         
-        # Convert image to base64 for response
-        buffer = BytesIO()
-        cropped_image.save(buffer, format='PNG')
-        image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-        
-        # Build response data
-        response_data: Dict[str, Any] = {
-            "success": True,
-            "message": "Label successfully detected and processed",
-            "label_dimensions": {
-                "width": cropped_image.width,
-                "height": cropped_image.height
-            },
-            "image_data": image_base64,
-            "confidence": best_pred["confidence"] if best_pred else None
-        }
+        # Build successful response
+        response_data = _build_success_response(processing_result)
         
         # Handle printing if requested
         if print_label:
-            try:
-                print_success, print_message = print_service.print_label_file(result_path)
-                response_data.update({
-                    "print_attempted": True,
-                    "print_success": print_success,
-                    "print_message": print_message
-                })
-                
-                if not print_success:
-                    response_data["print_error"] = print_message
-                    logger.warning(f"Print failed for {file.filename}: {print_message}")
-                else:
-                    logger.info(f"Print succeeded for {file.filename}")
-                    
-            except PrintingError as e:
-                logger.error(f"Print error for {file.filename}: {str(e)}")
-                response_data.update({
-                    "print_attempted": True,
-                    "print_success": False,
-                    "print_message": str(e),
-                    "print_error": str(e)
-                })
+            _handle_printing(processing_result["temp_path"], file.filename, response_data)
         
-        # Clean up temporary file
-        try:
-            if result_path and os.path.exists(result_path):
-                os.unlink(result_path)
-                logger.debug(f"Cleaned up temporary file: {result_path}")
-        except Exception as e:
-            logger.warning(f"Could not clean up temporary file {result_path}: {str(e)}")
+        # Clean up temporary files
+        _cleanup_temp_file(processing_result.get("temp_path"))
         
         logger.info(f"Successfully processed {file.filename}")
         return JSONResponse(content=response_data)
         
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
         logger.error(f"Unexpected error processing {file.filename}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+
+
+def _validate_upload_file(file: UploadFile) -> None:
+    """Validate uploaded file has a filename."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+
+def _process_label_file(file_content: bytes, filename: str) -> Dict[str, Any]:
+    """
+    Process file content and extract label information.
+    
+    Returns:
+        Dictionary with processing results including success status
+    """
+    try:
+        cropped_image, result_path, best_pred = image_processor.process_uploaded_file(
+            file_content, filename
+        )
+        
+        if cropped_image is None:
+            return {
+                "success": False,
+                "message": result_path
+            }
+        
+        return {
+            "success": True,
+            "cropped_image": cropped_image,
+            "temp_path": result_path,
+            "prediction": best_pred
+        }
+        
+    except ImageProcessingError as e:
+        logger.warning(f"Image processing failed for {filename}: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _create_error_response(message: str) -> JSONResponse:
+    """Create a JSON response for when no labels are detected."""
+    return JSONResponse(
+        status_code=200,  # Changed from 404 - no labels found is not a client error
+        content={"success": False, "message": message}
+    )
+
+
+def _build_success_response(processing_result: Dict[str, Any]) -> Dict[str, Any]:
+    """Build response data for successful label processing."""
+    cropped_image = processing_result["cropped_image"]
+    best_pred = processing_result["prediction"]
+    
+    # Convert image to base64 for response
+    buffer = BytesIO()
+    cropped_image.save(buffer, format='PNG')
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
+    return {
+        "success": True,
+        "message": "Label successfully detected and processed",
+        "label_dimensions": {
+            "width": cropped_image.width,
+            "height": cropped_image.height
+        },
+        "image_data": image_base64,
+        "confidence": best_pred["confidence"] if best_pred else None
+    }
+
+
+def _handle_printing(temp_path: str, filename: str, response_data: Dict[str, Any]) -> None:
+    """Handle printing logic and update response data."""
+    try:
+        print_success, print_message = print_service.print_label_file(temp_path)
+        response_data.update({
+            "print_attempted": True,
+            "print_success": print_success,
+            "print_message": print_message
+        })
+        
+        if not print_success:
+            response_data["print_error"] = print_message
+            logger.warning(f"Print failed for {filename}: {print_message}")
+        else:
+            logger.info(f"Print succeeded for {filename}")
+            
+    except PrintingError as e:
+        logger.error(f"Print error for {filename}: {str(e)}")
+        response_data.update({
+            "print_attempted": True,
+            "print_success": False,
+            "print_message": str(e),
+            "print_error": str(e)
+        })
+
+
+def _cleanup_temp_file(temp_path: "Optional[str]") -> None:
+    """Clean up temporary file if it exists."""
+    if temp_path and os.path.exists(temp_path):
+        try:
+            os.unlink(temp_path)
+            logger.debug(f"Cleaned up temporary file: {temp_path}")
+        except Exception as e:
+            logger.warning(f"Could not clean up temporary file {temp_path}: {str(e)}")
 
 
 @app.get("/health")

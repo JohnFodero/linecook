@@ -17,6 +17,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from config import settings, TEMP_DIR
+from dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,14 @@ logger = logging.getLogger(__name__)
 class PrintingError(Exception):
     """Custom exception for printing errors."""
     pass
+
+
+@dataclass
+class PrintResult:
+    """Result of a print operation with cleaner interface."""
+    success: bool
+    message: str
+    command_used: str = ""
 
 
 class PrintService:
@@ -41,6 +50,76 @@ class PrintService:
         self.temp_dir.mkdir(exist_ok=True, parents=True)
         logger.info("Initialized print service")
     
+    def print_label(self, image_path: Union[str, Path]) -> PrintResult:
+        """
+        Print a label file using configurable system print utilities.
+        
+        Args:
+            image_path: Path to the image file to print
+            
+        Returns:
+            PrintResult with success status and message
+            
+        Raises:
+            PrintingError: If printing is disabled or fails critically
+        """
+        if not settings.print_enabled:
+            raise PrintingError("Printing is disabled in configuration")
+        
+        image_path = str(image_path)
+        
+        if not os.path.exists(image_path):
+            raise PrintingError(f"Print file does not exist: {image_path}")
+        
+        try:
+            cmd = self._get_print_command()
+            full_cmd = cmd + [image_path]
+            
+            if settings.print_debug:
+                logger.debug(f"🖨️  Executing print command: {' '.join(full_cmd)}")
+            
+            # Execute the print command with timeout
+            result = subprocess.run(
+                full_cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=settings.api_timeout
+            )
+            
+            success_msg = f"Print job submitted successfully"
+            if settings.print_debug and result.stdout:
+                success_msg += f"\\nOutput: {result.stdout.strip()}"
+            
+            logger.info(f"Print job submitted for: {image_path}")
+            return PrintResult(
+                success=True,
+                message=success_msg,
+                command_used=' '.join(cmd)
+            )
+            
+        except subprocess.TimeoutExpired:
+            error_msg = f"Print command timed out after {settings.api_timeout} seconds"
+            logger.error(f"🖨️  {error_msg}")
+            return PrintResult(success=False, message=error_msg, command_used=' '.join(cmd))
+            
+        except subprocess.CalledProcessError as e:
+            error_msg = f"Print command failed with exit code {e.returncode}"
+            if e.stderr:
+                error_msg += f": {e.stderr.strip()}"
+            logger.error(f"🖨️  {error_msg}")
+            return PrintResult(success=False, message=error_msg, command_used=' '.join(cmd))
+            
+        except FileNotFoundError:
+            error_msg = f"Print command not found: {cmd[0] if cmd else 'unknown'}"
+            logger.error(f"🖨️  {error_msg}")
+            return PrintResult(success=False, message=error_msg)
+            
+        except Exception as e:
+            error_msg = f"Unexpected error during printing: {str(e)}"
+            logger.error(f"🖨️  {error_msg}")
+            return PrintResult(success=False, message=error_msg)
+
     def print_label_file(self, image_path: Union[str, Path]) -> Tuple[bool, str]:
         """
         Print a label file using configurable system print utilities.
