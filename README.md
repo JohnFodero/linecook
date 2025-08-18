@@ -28,7 +28,33 @@ This is designed to solve a super narrow problem - when using a label printer yo
    ROBOFLOW_API_KEY=your_api_key_here
    ```
 
-  __Note__: see `.env.example` for more configuration options
+   __Note__: see `.env.example` for more configuration options
+
+### Inference Configuration
+
+LineCook supports both cloud-based and local inference. By default, it uses Roboflow's cloud API, but you can run inference locally for better performance and privacy.
+
+#### Cloud Inference (Default)
+Uses Roboflow's cloud API (requires internet connection):
+```env
+INFERENCE_API_URL=https://serverless.roboflow.com/
+```
+
+#### Local Inference 
+For local processing with Docker Compose (recommended for production):
+```env
+INFERENCE_API_URL=http://inference-server:9001
+```
+
+For standalone local inference server:
+```env  
+INFERENCE_API_URL=http://localhost:9001
+```
+
+To run a standalone local inference server:
+```bash
+docker run -p 9001:9001 -e ROBOFLOW_API_KEY=your_key roboflow/roboflow-inference-server-cpu
+```
 
 4. **Docker setup**:
     Getting CUPS working in docker can be a bit finicky. The commented lines in `docker-compose.yml` work well for me on an Ubuntu host (with CUPS setup). In general, mounting cups.sock seems to be the suggested approach here. Feel free to share alternatives if they work for you. ie. I have not had any luck (nor have I tried much yet) running this on a MacOS host.. 

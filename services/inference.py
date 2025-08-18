@@ -44,13 +44,13 @@ class InferenceService:
             confidence_threshold=confidence_threshold
         )
         
-        # Initialize client with secure API key handling
+        # Initialize client with configurable API URL
         self.client = InferenceHTTPClient(
-            api_url="https://serverless.roboflow.com/",
+            api_url=settings.inference_api_url,
             api_key=api_key
         )
         
-        logger.info(f"Initialized inference service with model {model_id}")
+        logger.info(f"Initialized inference service with model {model_id} using API URL: {settings.inference_api_url}")
     
     def infer_image(self, image_input: Union[str, Path, Image.Image]) -> Dict[str, Any]:
         """
