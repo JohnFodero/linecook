@@ -90,6 +90,12 @@ class Settings(BaseSettings):
         default=30,
         description="API request timeout in seconds"
     )
+    
+    # Inference configuration
+    inference_api_url: str = Field(
+        default="https://serverless.roboflow.com/",
+        description="Roboflow inference API URL. Use 'https://serverless.roboflow.com/' for cloud inference or 'http://localhost:9001' for local inference server"
+    )
 
 
 def setup_logging(settings: Settings) -> logging.Logger:

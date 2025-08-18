@@ -36,6 +36,48 @@ The application requires a `.env` file with:
 ROBOFLOW_API_KEY=your_api_key_here
 ```
 
+### Inference Configuration
+
+LineCook supports both cloud-based and local inference:
+
+**Cloud Inference (Default):**
+```bash
+INFERENCE_API_URL=https://serverless.roboflow.com/
+```
+
+**Local Inference with Docker Compose:**
+```bash
+# Uses the local inference container in the stack
+INFERENCE_API_URL=http://inference-server:9001
+```
+
+**Local Inference (Standalone):**
+```bash
+# For running against a local inference server on host
+INFERENCE_API_URL=http://localhost:9001
+```
+
+### Running Local Inference
+
+To use local inference with the provided Docker Compose stack:
+
+1. **Start the full stack** (includes local inference server):
+   ```bash
+   docker-compose up
+   ```
+
+2. **Start only the inference server** for standalone use:
+   ```bash
+   docker run -p 9001:9001 -e ROBOFLOW_API_KEY=your_key roboflow/roboflow-inference-server-cpu
+   ```
+
+### Benefits of Local Inference
+
+- **Faster response times** (no network latency to cloud)
+- **Data privacy** (images processed locally)
+- **Offline capability** (after initial model download)
+- **Cost reduction** (no per-inference API charges)
+
 ## Architecture
 
 ### Core Components

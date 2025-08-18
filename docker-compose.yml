@@ -1,4 +1,22 @@
 services:
+  # Local Roboflow inference server
+  inference-server:
+    image: roboflow/roboflow-inference-server-cpu:latest
+    container_name: linecook-inference
+    ports:
+      - "9001:9001"
+    environment:
+      - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
+    volumes:
+      - inference-cache:/tmp/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"] 
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   linecook-api:
 #    image: ghcr.io/johnfodero/linecook:latest
     build:
@@ -12,8 +30,12 @@ services:
       - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY}
       - MODEL_ID=${MODEL_ID:-shipping-label-k3hzg/4}
       - CONFIDENCE_THRESH=${CONFIDENCE_THRESH:-0.04}
+      - INFERENCE_API_URL=${INFERENCE_API_URL:-http://inference-server:9001}
     env_file:
       - .env
+    depends_on:
+      inference-server:
+        condition: service_healthy
     restart: unless-stopped
     # uncomment when running on a linux host 
     # volumes:
@@ -25,3 +47,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  inference-cache:
